@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnippetVault - 代码片段管理器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        header {
+            background: #161b22;
+            border-bottom: 1px solid #21262d;
+            padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .logo span { color: #58a6ff; }
+        .header-acts { display: flex; gap: 6px; }
+        .hb {
+            padding: 7px 16px; background: #21262d;
+            border: 1px solid #30363d; color: #8b949e;
+            border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s;
+        }
+        .hb:hover { background: #30363d; color: white; }
+        .hb.primary { background: #238636; color: white; border-color: #238636; }
+        .hb.primary:hover { background: #2ea043; }
+
+        .main { flex: 1; display: flex; overflow: hidden; }
+
+        /* 左侧列表 */
+        .sidebar {
+            width: 340px; background: #0d1117;
+            border-right: 1px solid #21262d;
+            display: flex; flex-direction: column;
+            flex-shrink: 0;
+        }
+        .search-bar {
+            padding: 12px 16px; border-bottom: 1px solid #21262d;
+        }
+        .search-input {
+            width: 100%; padding: 9px 14px 9px 34px;
+            background: #161b22; border: 1px solid #30363d;
+            color: #c9d1d9; border-radius: 6px; font-size: 13px;
+            outline: none; position: relative;
+        }
+        .search-input:focus { border-color: #58a6ff; }
+        .search-input::placeholder { color: #484f58; }
+        .search-wrap { position: relative; }
+        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #484f58; pointer-events: none; }
+
+        .filter-row {
+            display: flex; gap: 4px; padding: 8px 16px;
+            border-bottom: 1px solid #161b22;
+            overflow-x: auto;
+        }
+        .filter-tag {
+            padding: 4px 12px; background: transparent;
+            border: 1px solid #21262d; color: #484f58;
+            border-radius: 16px; cursor: pointer; font-size: 11px;
+            white-space: nowrap; transition: 0.2s;
+        }
+        .filter-tag:hover { color: #8b949e; border-color: #30363d; }
+        .filter-tag.active { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,0.06); }
+
+        .snippet-list {
+            flex: 1; overflow-y: auto; padding: 8px;
+        }
+        .snippet-item {
+            padding: 14px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.15s;
+            margin-bottom: 4px;
+            border: 1px solid transparent;
+        }
+        .snippet-item:hover { background: #161b22; }
+        .snippet-item.active { background: #161b22; border-color: #21262d; }
+        .si-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .si-title { font-size: 14px; font-weight: 600; }
+        .si-lang {
+            font-size: 10px; padding: 2px 8px;
+            border-radius: 10px; font-weight: 600;
+        }
+        .si-desc { font-size: 12px; color: #484f58; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .si-meta { font-size: 11px; color: #30363d; display: flex; gap: 10px; }
+        .si-meta span { display: flex; align-items: center; gap: 3px; }
+
+        .list-empty { text-align: center; color: #21262d; padding: 40px 20px; font-size: 14px; }
+        .snippet-count {
+            padding: 8px 16px; font-size: 11px; color: #30363d;
+            border-top: 1px solid #21262d;
+        }
+
+        /* 右侧编辑器 */
+        .editor-area {
+            flex: 1; display: flex; flex-direction: column;
+            background: #0d1117;
+        }
+        .editor-toolbar {
+            background: #161b22;
+            border-bottom: 1px solid #21262d;
+            padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        .et-left { display: flex; gap: 10px; align-items: center; }
+        .et-title {
+            font-size: 16px; font-weight: 600;
+            background: transparent; border: none; color: white;
+            outline: none; max-width: 300px;
+        }
+        .et-title:focus { border-bottom: 1px solid #58a6ff; }
+        .lang-select {
+            padding: 4px 10px; background: #21262d; border: 1px solid #30363d;
+            color: #8b949e; border-radius: 6px; font-size: 12px; outline: none;
+        }
+        .et-right { display: flex; gap: 4px; }
+
+        .editor-meta {
+            padding: 10px 20px;
+            border-bottom: 1px solid #161b22;
+            display: flex; gap: 10px; align-items: center;
+            flex-shrink: 0;
+        }
+        .meta-input {
+            flex: 1; padding: 8px 12px;
+            background: #161b22; border: 1px solid #21262d;
+            color: #c9d1d9; border-radius: 6px; font-size: 12px;
+            outline: none;
+        }
+        .meta-input:focus { border-color: #58a6ff; }
+        .tags-input {
+            flex: 2; padding: 8px 12px;
+            background: #161b22; border: 1px solid #21262d;
+            color: #c9d1d9; border-radius: 6px; font-size: 12px;
+            outline: none;
+        }
+
+        .code-editor-wrap { flex: 1; position: relative; overflow: hidden; }
+        .code-editor {
+            width: 100%; height: 100%;
+            background: #0d1117;
+            color: #c9d1d9;
+            border: none;
+            padding: 20px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+        .code-editor::placeholder { color: #21262d; }
+        .line-numbers {
+            position: absolute; top: 0; left: 0;
+            width: 48px; height: 100%;
+            background: #0d1117;
+            border-right: 1px solid #161b22;
+            padding: 20px 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px; line-height: 1.7;
+            text-align: right;
+            color: #21262d;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .code-editor { padding-left: 62px; }
+
+        .editor-footer {
+            background: #161b22;
+            border-top: 1px solid #21262d;
+            padding: 6px 20px;
+            font-size: 11px; color: #30363d;
+            display: flex; justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 12px; color: #21262d;
+        }
+        .empty-state .icon { font-size: 48px; }
+        .empty-state .text { font-size: 16px; }
+
+        .toast {
+            position: fixed; bottom: 30px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #161b22; border: 1px solid #30363d;
+            color: white; padding: 10px 24px; border-radius: 10px;
+            font-size: 13px; opacity: 0; transition: 0.3s; z-index: 200;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .sidebar::-webkit-scrollbar, .snippet-list::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb, .snippet-list::-webkit-scrollbar-thumb { background: #21262d; border-radius: 2px; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; }
+            .editor-area { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">📦 Snippet<span>Vault</span></div>
+        <div class="header-acts">
+            <button class="hb" onclick="exportAll()">📥 导出全部</button>
+            <button class="hb" onclick="importSnippets()">📂 导入</button>
+            <button class="hb primary" onclick="createSnippet()">＋ 新建片段</button>
+        </div>
+    </header>
+
+    <div class="main">
+        <!-- 列表 -->
+        <div class="sidebar">
+            <div class="search-bar">
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input class="search-input" id="searchInput" placeholder="搜索片段..." oninput="filterSnippets()">
+                </div>
+            </div>
+            <div class="filter-row" id="filterRow"></div>
+            <div class="snippet-list" id="snippetList"></div>
+            <div class="snippet-count" id="snippetCount">0 个片段</div>
+        </div>
+
+        <!-- 编辑器 -->
+        <div class="editor-area" id="editorArea">
+            <div class="empty-state" id="emptyState">
+                <div class="icon">📦</div>
+                <div class="text">选择或创建一个代码片段</div>
+            </div>
+            <div id="editorContent" style="display:none;flex:1;display:none;flex-direction:column;">
+                <div class="editor-toolbar">
+                    <div class="et-left">
+                        <input class="et-title" id="edTitle" placeholder="片段标题" oninput="saveCurrentSnippet()">
+                        <select class="lang-select" id="edLang" onchange="saveCurrentSnippet()">
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="java">Java</option>
+                            <option value="go">Go</option>
+                            <option value="rust">Rust</option>
+                            <option value="sql">SQL</option>
+                            <option value="shell">Shell</option>
+                            <option value="json">JSON</option>
+                            <option value="markdown">Markdown</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                    <div class="et-right">
+                        <button class="hb" onclick="copyCode()">📋 复制</button>
+                        <button class="hb" onclick="forkSnippet()">🍴 Fork</button>
+                        <button class="hb" style="color:#f85149;" onclick="deleteSnippet()">🗑 删除</button>
+                    </div>
+                </div>
+                <div class="editor-meta">
+                    <input class="meta-input" id="edDesc" placeholder="描述 (可选)" oninput="saveCurrentSnippet()">
+                    <input class="tags-input" id="edTags" placeholder="标签 (逗号分隔: react, hook, api)" oninput="saveCurrentSnippet()">
+                </div>
+                <div class="code-editor-wrap">
+                    <div class="line-numbers" id="lineNumbers">1</div>
+                    <textarea class="code-editor" id="codeEditor" placeholder="在此输入代码..." oninput="onCodeInput()" onscroll="syncScroll()"></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span id="footerInfo">0 行 · 0 字符</span>
+                    <span id="footerTime"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ========== 数据 ==========
+        const LANG_COLORS = {
+            javascript: '#f1e05a', python: '#3572A5', html: '#e34c26',
+            css: '#563d7c', typescript: '#3178c6', java: '#b07219',
+            go: '#00ADD8', rust: '#dea584', sql: '#e38c00',
+            shell: '#89e051', json: '#292929', markdown: '#083fa1', other: '#6b7280'
+        };
+
+        let snippets = JSON.parse(localStorage.getItem('snippetvault_data') || '[]');
+        let currentId = null;
+        let activeFilter = 'all';
+
+        // 初始示例
+        if (snippets.length === 0) {
+            snippets = [
+                { id: 's1', title: '防抖函数', desc: '通用防抖工具函数', lang: 'javascript', tags: ['utils','debounce'], code: `function debounce(fn, delay = 300) {\n  let timer;\n  return function (...args) {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn.apply(this, args), delay);\n  };\n}`, created: Date.now() - 86400000, updated: Date.now() },
+                { id: 's2', title: 'Flex 居中', desc: 'CSS Flexbox 水平垂直居中', lang: 'css', tags: ['layout','flex'], code: `.center {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}`, created: Date.now() - 172800000, updated: Date.now() - 3600000 },
+                { id: 's3', title: 'Python 文件读取', desc: '读取文本文件的简洁写法', lang: 'python', tags: ['io','file'], code: `with open('data.txt', 'r', encoding='utf-8') as f:\n    content = f.read()\n    print(content)`, created: Date.now() - 259200000, updated: Date.now() - 7200000 },
+                { id: 's4', title: 'SQL 分页查询', desc: '带排序的分页查询模板', lang: 'sql', tags: ['query','pagination'], code: `SELECT *\nFROM users\nWHERE status = 'active'\nORDER BY created_at DESC\nLIMIT 10 OFFSET 20;`, created: Date.now() - 345600000, updated: Date.now() - 86400000 },
+            ];
+            saveAll();
+        }
+
+        function saveAll() {
+            localStorage.setItem('snippetvault_data', JSON.stringify(snippets));
+        }
+
+        // ========== 列表渲染 ==========
+        function renderList() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            let filtered = snippets.filter(s => {
+                const matchSearch = !search ||
+                    s.title.toLowerCase().includes(search) ||
+                    s.desc.toLowerCase().includes(search) ||
+                    s.tags.some(t => t.toLowerCase().includes(search)) ||
+                    s.code.toLowerCase().includes(search);
+                const matchFilter = activeFilter === 'all' || s.lang === activeFilter;
+                return matchSearch && matchFilter;
+            });
+
+            filtered.sort((a, b) => b.updated - a.updated);
+
+            const list = document.getElementById('snippetList');
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="list-empty">📭 没有找到匹配的片段</div>';
+            } else {
+                list.innerHTML = filtered.map(s => `
+                    <div class="snippet-item ${currentId === s.id ? 'active' : ''}" onclick="selectSnippet('${s.id}')">
+                        <div class="si-header">
+                            <span class="si-title">${escHtml(s.title)}</span>
+                            <span class="si-lang" style="background:${LANG_COLORS[s.lang] || '#6b7280'}20;color:${LANG_COLORS[s.lang] || '#6b7280'};">${s.lang}</span>
+                        </div>
+                        <div class="si-desc">${escHtml(s.desc || '暂无描述')}</div>
+                        <div class="si-meta">
+                            <span>📅 ${timeAgo(s.updated)}</span>
+                            <span>📝 ${s.code.split('\n').length} 行</span>
+                            ${s.tags.length > 0 ? `<span>🏷 ${s.tags.slice(0,2).join(', ')}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('snippetCount').textContent = `${filtered.length} / ${snippets.length} 个片段`;
+        }
+
+        function renderFilters() {
+            const langs = ['all', ...new Set(snippets.map(s => s.lang))];
+            document.getElementById('filterRow').innerHTML = langs.map(l =>
+                `<button class="filter-tag ${activeFilter === l ? 'active' : ''}" onclick="setFilter('${l}')">${l === 'all' ? '📁 全部' : l}</button>`
+            ).join('');
+        }
+
+        function setFilter(f) {
+            activeFilter = f;
+            renderFilters();
+            renderList();
+        }
+
+        function filterSnippets() { renderList(); }
+
+        // ========== 选择编辑 ==========
+        function selectSnippet(id) {
+            currentId = id;
+            const s = snippets.find(x => x.id === id);
+            if (!s) return;
+
+            document.getElementById('emptyState').style.display = 'none';
+            const editor = document.getElementById('editorContent');
+            editor.style.display = 'flex';
+
+            document.getElementById('edTitle').value = s.title;
+            document.getElementById('edDesc').value = s.desc;
+            document.getElementById('edLang').value = s.lang;
+            document.getElementById('edTags').value = s.tags.join(', ');
+            document.getElementById('codeEditor').value = s.code;
+            document.getElementById('footerTime').textContent = `更新: ${new Date(s.updated).toLocaleString()}`;
+
+            updateLineNumbers();
+            updateFooterInfo();
+            renderList();
+        }
+
+        function saveCurrentSnippet() {
+            if (!currentId) return;
+            const s = snippets.find(x => x.id === currentId);
+            if (!s) return;
+            s.title = document.getElementById('edTitle').value || '未命名';
+            s.desc = document.getElementById('edDesc').value;
+            s.lang = document.getElementById('edLang').value;
+            s.tags = document.getElementById('edTags').value.split(',').map(t => t.trim()).filter(Boolean);
+            s.code = document.getElementById('codeEditor').value;
+            s.updated = Date.now();
+            saveAll();
+            renderList();
+            renderFilters();
+        }
+
+        // ========== CRUD ==========
+        function createSnippet() {
+            const s = {
+                id: 'sn' + Date.now(),
+                title: '新代码片段',
+                desc: '',
+                lang: 'javascript',
+                tags: [],
+                code: '// 在此输入代码\n',
+                created: Date.now(),
+                updated: Date.now()
+            };
+            snippets.unshift(s);
+            saveAll();
+            selectSnippet(s.id);
+            renderFilters();
+            showToast('✅ 新片段已创建');
+        }
+
+        function deleteSnippet() {
+            if (!currentId) return;
+            if (!confirm('确定删除此代码片段？')) return;
+            snippets = snippets.filter(s => s.id !== currentId);
+            currentId = null;
+            saveAll();
+            document.getElementById('editorContent').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'flex';
+            renderList();
+            renderFilters();
+            showToast('🗑 片段已删除');
+        }
+
+        function forkSnippet() {
+            if (!currentId) return;
+            const src = snippets.find(s => s.id === currentId);
+            const copy = { ...JSON.parse(JSON.stringify(src)), id: 'sn' + Date.now(), title: src.title + ' (副本)', created: Date.now(), updated: Date.now() };
+            snippets.unshift(copy);
+            saveAll();
+            selectSnippet(copy.id);
+            renderFilters();
+            showToast('🍴 已 Fork');
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeEditor').value;
+            navigator.clipboard.writeText(code).then(() => showToast('📋 代码已复制'));
+        }
+
+        // ========== 导入导出 ==========
+        function exportAll() {
+            const json = JSON.stringify(snippets, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.download = 'snippets.json';
+            a.href = URL.createObjectURL(blob);
+            a.click();
+            showToast('📥 已导出 ' + snippets.length + ' 个片段');
+        }
+
+        function importSnippets() {
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        if (Array.isArray(data)) {
+                            snippets = [...data, ...snippets];
+                            saveAll(); renderList(); renderFilters();
+                            showToast(`📂 已导入 ${data.length} 个片段`);
+                        }
+                    } catch { showToast('❌ JSON 格式错误'); }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // ========== 编辑器增强 ==========
+        function onCodeInput() {
+            saveCurrentSnippet();
+            updateLineNumbers();
+            updateFooterInfo();
+        }
+
+        function updateLineNumbers() {
+            const code = document.getElementById('codeEditor').value;
+            const lines = code.split('\n').length;
+            document.getElementById('lineNumbers').innerHTML = Array.from({ length: lines }, (_, i) => `<div style="padding:0 8px;">${i + 1}</div>`).join('');
+        }
+
+        function syncScroll() {
+            document.getElementById('lineNumbers').scrollTop = document.getElementById('codeEditor').scrollTop;
+        }
+
+        function updateFooterInfo() {
+            const code = document.getElementById('codeEditor').value;
+            const lines = code.split('\n').length;
+            const chars = code.length;
+            document.getElementById('footerInfo').textContent = `${lines} 行 · ${chars} 字符`;
+        }
+
+        // Tab 键支持
+        document.getElementById('codeEditor').addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const ta = e.target;
+                const start = ta.selectionStart;
+                ta.value = ta.value.slice(0, start) + '    ' + ta.value.slice(ta.selectionEnd);
+                ta.selectionStart = ta.selectionEnd = start + 4;
+                onCodeInput();
+            }
+        });
+
+        // ========== 工具 ==========
+        function timeAgo(ts) {
+            const diff = Date.now() - ts;
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+            return Math.floor(diff / 86400000) + ' 天前';
+        }
+
+        function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2200);
+        }
+
+        // 快捷键
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); createSnippet(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCurrentSnippet(); showToast('💾 已保存'); }
+        });
+
+        // 初始化
+        renderFilters();
+        renderList();
+    </script>
+</body>
+</html>
